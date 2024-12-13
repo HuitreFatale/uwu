@@ -1,5 +1,5 @@
 #!/bin/bash
-
+#CHAT GPT !!!!!!
 FICHIER="$1"
 
 if [[ ! -f "$FICHIER" ]]; then
