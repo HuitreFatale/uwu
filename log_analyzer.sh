@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# Vérifier si un fichier et une commande sont fournis en argument
+# Check si deux arguments sont fournis, sinon invocation de l'aide 
 if [ $# -lt 2 ]; then
   echo "Usage: ./log_analyzer.sh <command> <logfile>"
   echo "Commands:"
@@ -14,15 +14,17 @@ logfile=$2
 
 # Vérifier si le fichier de logs existe
 if [ ! -f "$logfile" ]; then
-  echo "Le fichier spécifié n'existe pas : $logfile"
+  echo "Le fichier spécifié n'existe pas"
   exit 1
 fi
 
 # Effectuer l'agrégation des logs si la commande est 'aggregate'
-if [ "$command" == "aggregate" ]; then
+if [ "$command" == ""aggregate"" ]; then
+  echo ""
   echo =-= Aggregating file "$logfile" =-=
+  echo ""
 
-  # Initialisation des compteurs pour chaque niveau de log
+  # Invocation des variables à compter
   compteur_trace=0
   compteur_debug=0
   compteur_info=0
@@ -51,6 +53,7 @@ if [ "$command" == "aggregate" ]; then
     fi
 
     # Extraire le message dans msg="..." et ajouter à la liste des messages
+    # msg=\"([^\"]+)\" cherche le texte entre les guillemets après msg=
     if [[ "$ligne" =~ msg=\"([^\"]+)\" ]]; then
       tous_les_messages+=("${BASH_REMATCH[1]}")
     fi
@@ -64,6 +67,8 @@ if [ "$command" == "aggregate" ]; then
   echo " - warn: $compteur_avertissement"
   echo " - error: $compteur_erreur"
   echo " - fatal: $compteur_fatal"
+  echo ""
+
 
   # Si des messages ont été trouvés
   if [ ${#tous_les_messages[@]} -gt 0 ]; then
@@ -74,6 +79,8 @@ if [ "$command" == "aggregate" ]; then
     done
 
     # Extraire le message le plus commun
+    # s/^[ \t]*// supprime les espaces et tabulations au début de la ligne.
+    # s/^[ \t]*[0-9]*[ \t]*// supprime les espaces, le nombre d'occurrence et les espaces qui suivent, depuis le début de la ligne.
     message_plus_commun=$(sort "$temp" | uniq -c | sort -nr | head -n 1 | sed 's/^[ \t]*//')
     most_common_msg_count=$(echo "$message_plus_commun" | awk '{print $1}')
     most_common_msg=$(echo "$message_plus_commun" | sed 's/^[ \t]*[0-9]*[ \t]*//')
@@ -92,14 +99,17 @@ if [ "$command" == "aggregate" ]; then
   else
     echo "Aucun message trouvé dans les logs (msg=\"...\")."
   fi
-
+  echo ""
   echo =-= End of report =-=
 
 # Effectuer l'analyse temporelle si la commande est 'temporal_analysis'
 elif [ "$command" == "temporal_analysis" ]; then
+  echo ""
   echo =-= "$logfile" temporal analysis =-=
+  echo ""
 
   # Variables pour les jours et heures
+  
   declare -A jours_actifs
   declare -A heures_actives
   declare -A erreurs_heures
@@ -108,7 +118,7 @@ elif [ "$command" == "temporal_analysis" ]; then
   while IFS= read -r ligne; do
     # Extraire les informations de date, heure, niveau de log
     if [[ "$ligne" =~ \[([a-zA-Z]+)\].*([0-9]{4}-[0-9]{2}-[0-9]{2})T([0-9]{2}):([0-9]{2}):([0-9]{2}) ]]; then
-      jour_semaine=${BASH_REMATCH[1]}
+      jour_semaine=${BASH_REMATCH[2]}
       heure=${BASH_REMATCH[3]}
 
       # Compter les jours et les heures
@@ -119,21 +129,26 @@ elif [ "$command" == "temporal_analysis" ]; then
       if [[ "$ligne" =~ \[error\] || "$ligne" =~ \[fatal\] ]]; then
         ((erreurs_heures[$heure]++))
       fi
-    fi
+   fi
   done < "$logfile"
 
+  
+
   # Jour le plus actif
-  most_active_day=$(for day in "${!jours_actifs[@]}"; do echo "$day ${jours_actifs[$day]}"; done | sort -k2 -nr | head -n 1 | awk '{print $1}')
+most_active_day=$(for day in "${!jours_actifs[@]}"; do echo "$day ${jours_actifs[$day]}"; done | sort -k2 -nr | head -n 1 | awk '{print $1}')
+most_active_day=$(date -d "${most_active_day}" "+%A")
   echo "Most active day: $most_active_day"
 
-  # Heure la plus active
-  most_active_hour=$(for hour in "${!heures_actives[@]}"; do echo "$hour ${heures_actives[$hour]}"; done | sort -k2 -nr | head -n 1 | awk '{print $1}')
-  echo "Most active hour: ${most_active_hour}h"
+ # Suppression des zéros devant les heures
+most_active_hour=$(for hour in "${!heures_actives[@]}"; do echo "$hour ${heures_actives[$hour]}"; done | sort -k2 -nr | head -n 1 | awk '{print $1}' | sed 's/^0//')
+echo "Most active hour: ${most_active_hour}h"
 
-  # Heure la plus "error-prone"
-  most_error_prone_hour=$(for hour in "${!erreurs_heures[@]}"; do echo "$hour ${erreurs_heures[$hour]}"; done | sort -k2 -nr | head -n 1 | awk '{print $1}')
-  echo "Most error-prone hour: ${most_error_prone_hour}h"
+# Heure ayant le plus d'erreurs
+most_error_prone_hour=$(for hour in "${!erreurs_heures[@]}"; do echo "$hour ${erreurs_heures[$hour]}"; done | sort -k2 -nr | head -n 1 | awk '{print $1}' | sed 's/^0//')
+echo "Most error-prone hour: ${most_error_prone_hour}h"
 
+
+  echo ""
   echo =-= End of report =-=
 
 else

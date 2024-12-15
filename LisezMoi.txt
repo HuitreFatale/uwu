@@ -1,0 +1,11 @@
+dépot git
+
+https://github.com/HuitreFatale/uwu/branches
+
+commandes :
+
+agrégation des logs : 
+ ./log_analyzer.sh aggregate LeNomDuLog.log
+
+Analys temporelle : 
+./log_analyzer.sh temporal_analysis LeNomDuLog.log
